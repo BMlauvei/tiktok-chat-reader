@@ -22,13 +22,19 @@ const connectionStats = new Map();
 
 console.log('🚀 TikTok Live Connector sunucusu başlatılıyor...');
 
-// Health check endpoint
+// Ana sayfa - Health check
 app.get('/', (req, res) => {
   res.json({ 
     status: 'OK', 
     message: 'TikTok Chat Reader Backend',
     timestamp: new Date().toISOString(),
-    activeConnections: activeConnections.size
+    activeConnections: activeConnections.size,
+    endpoints: {
+      connect: 'POST /api/connect',
+      disconnect: 'POST /api/disconnect',
+      health: 'GET /api/health',
+      connections: 'GET /api/connections'
+    }
   });
 });
 
@@ -314,10 +320,25 @@ io.on('connection', (socket) => {
   });
 });
 
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({
+    error: 'Endpoint bulunamadı',
+    availableEndpoints: {
+      'GET /': 'Ana sayfa ve health check',
+      'POST /api/connect': 'TikTok kullanıcısına bağlan',
+      'POST /api/disconnect': 'Bağlantıyı kes',
+      'GET /api/health': 'Sağlık kontrolü',
+      'GET /api/connections': 'Aktif bağlantıları listele'
+    }
+  });
+});
+
 const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log('🎉 TikTok Live Connector sunucusu başarıyla başlatıldı!');
   console.log(`🔧 Backend: Port ${PORT}`);
-  console.log(`📊 Sağlık kontrolü: /api/health`);
+  console.log(`📊 Ana sayfa: http://localhost:${PORT}`);
+  console.log(`📊 Sağlık kontrolü: http://localhost:${PORT}/api/health`);
   console.log('📝 Hazır! TikTok kullanıcı adı girerek canlı yayın verilerini okuyabilirsiniz.');
 });
