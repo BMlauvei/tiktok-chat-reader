@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TikTok Chat Reader</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .connection-panel {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+        .chat-panel {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            height: 500px;
+            overflow-y: auto;
+            backdrop-filter: blur(10px);
+        }
+        .message {
+            margin-bottom: 10px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+        }
+        .username {
+            font-weight: bold;
+            color: #ff6b6b;
+        }
+        .timestamp {
+            font-size: 0.8em;
+            color: #ccc;
+        }
+        input, button {
+            padding: 10px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+        }
+        button {
+            background: #ff6b6b;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #ff5252;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .stat-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #ff6b6b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎥 TikTok Chat Reader</h1>
+            <p>Gerçek TikTok canlı yayın sohbetini okuyun</p>
+        </div>
+
+        <div class="connection-panel">
+            <h3>Bağlantı</h3>
+            <div id="connectionForm">
+                <input type="text" id="usernameInput" placeholder="TikTok kullanıcı adı (@ olmadan)" />
+                <button onclick="connect()">Bağlan</button>
+            </div>
+            <div id="connectionStatus" style="display: none;">
+                <p>Bağlı: <span id="connectedUser"></span></p>
+                <button onclick="disconnect()">Bağlantıyı Kes</button>
+            </div>
+        </div>
+
+        <div class="stats" id="stats" style="display: none;">
+            <div class="stat-item">
+                <div class="stat-value" id="viewerCount">0</div>
+                <div>İzleyici</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="likeCount">0</div>
+                <div>Beğeni</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="followCount">0</div>
+                <div>Takipçi</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="giftCount">0</div>
+                <div>Hediye</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="shareCount">0</div>
+                <div>Paylaşım</div>
+            </div>
+        </div>
+
+        <div class="chat-panel" id="chatPanel">
+            <p>Sohbet mesajları burada görünecek...</p>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let isConnected = false;
+
+        // Socket olayları
+        socket.on('message', (message) => {
+            addMessage(message);
+        });
+
+        socket.on('stats', (stats) => {
+            updateStats(stats);
+        });
+
+        socket.on('connected', (data) => {
+            isConnected = true;
+            document.getElementById('connectionForm').style.display = 'none';
+            document.getElementById('connectionStatus').style.display = 'block';
+            document.getElementById('connectedUser').textContent = '@' + data.username;
+            document.getElementById('stats').style.display = 'grid';
+            document.getElementById('chatPanel').innerHTML = '';
+        });
+
+        socket.on('disconnected', () => {
+            isConnected = false;
+            document.getElementById('connectionForm').style.display = 'block';
+            document.getElementById('connectionStatus').style.display = 'none';
+            document.getElementById('stats').style.display = 'none';
+            document.getElementById('chatPanel').innerHTML = '<p>Bağlantı kesildi...</p>';
+        });
+
+        socket.on('error', (error) => {
+            alert('Hata: ' + error.message);
+        });
+
+        // Bağlantı fonksiyonları
+        async function connect() {
+            const username = document.getElementById('usernameInput').value.trim();
+            if (!username) {
+                alert('Lütfen bir kullanıcı adı girin');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/connect', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username }),
+                });
+
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                alert('Bağlantı hatası: ' + error.message);
+            }
+        }
+
+        async function disconnect() {
+            try {
+                await fetch('/api/disconnect', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username: document.getElementById('connectedUser').textContent.replace('@', '') }),
+                });
+            } catch (error) {
+                console.error('Bağlantı kesme hatası:', error);
+            }
+        }
+
+        // Mesaj ekleme
+        function addMessage(message) {
+            const chatPanel = document.getElementById('chatPanel');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message';
+
+            let content = '';
+            switch (message.type) {
+                case 'gift':
+                    content = `🎁 ${message.giftName} hediyesi gönderdi (${message.giftValue} ⭐)`;
+                    break;
+                case 'follow':
+                    content = '👥 takip etmeye başladı';
+                    break;
+                case 'like':
+                    content = '❤️ beğendi';
+                    break;
+                case 'share':
+                    content = '📤 paylaştı';
+                    break;
+                default:
+                    content = message.message;
+            }
+
+            messageDiv.innerHTML = `
+                <span class="username">@${message.username}</span>
+                ${message.verified ? '✓' : ''}
+                <span class="timestamp">${new Date(message.timestamp).toLocaleTimeString()}</span>
+                <br>
+                ${content}
+            `;
+
+            chatPanel.appendChild(messageDiv);
+            chatPanel.scrollTop = chatPanel.scrollHeight;
+
+            // Son 100 mesajı tut
+            while (chatPanel.children.length > 100) {
+                chatPanel.removeChild(chatPanel.firstChild);
+            }
+        }
+
+        // İstatistikleri güncelle
+        function updateStats(stats) {
+            document.getElementById('viewerCount').textContent = stats.viewerCount.toLocaleString();
+            document.getElementById('likeCount').textContent = stats.likeCount.toLocaleString();
+            document.getElementById('followCount').textContent = stats.followCount.toLocaleString();
+            document.getElementById('giftCount').textContent = stats.giftCount.toLocaleString();
+            document.getElementById('shareCount').textContent = stats.shareCount.toLocaleString();
+        }
+
+        // Enter tuşu ile bağlan
+        document.getElementById('usernameInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                connect();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TikTok Chat - OBS Overlay</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 10px;
+            background: transparent;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+            overflow: hidden;
+        }
+        .chat-container {
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+        }
+        .message {
+            margin-bottom: 8px;
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 8px;
+            border-left: 3px solid #ff6b6b;
+            animation: slideIn 0.3s ease-out;
+            backdrop-filter: blur(5px);
+        }
+        .username {
+            font-weight: bold;
+            color: #ff6b6b;
+            font-size: 14px;
+        }
+        .message-content {
+            font-size: 16px;
+            margin-top: 2px;
+        }
+        .gift {
+            border-left-color: #ffd700;
+        }
+        .follow {
+            border-left-color: #00ff00;
+        }
+        .like {
+            border-left-color: #ff1493;
+        }
+        .share {
+            border-left-color: #1e90ff;
+        }
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        .verified {
+            color: #1da1f2;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container" id="chatContainer">
+        <!-- Mesajlar burada görünecek -->
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const chatContainer = document.getElementById('chatContainer');
+
+        socket.on('message', (message) => {
+            addMessage(message);
+        });
+
+        function addMessage(message) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${message.type}`;
+
+            let content = '';
+            let icon = '';
+            
+            switch (message.type) {
+                case 'gift':
+                    content = `${message.giftName} hediyesi gönderdi (${message.giftValue} ⭐)`;
+                    icon = '🎁';
+                    break;
+                case 'follow':
+                    content = 'takip etmeye başladı';
+                    icon = '👥';
+                    break;
+                case 'like':
+                    content = 'beğendi';
+                    icon = '❤️';
+                    break;
+                case 'share':
+                    content = 'paylaştı';
+                    icon = '📤';
+                    break;
+                default:
+                    content = message.message;
+                    icon = '💬';
+            }
+
+            messageDiv.innerHTML = `
+                <div class="username">
+                    ${icon} @${message.username}
+                    ${message.verified ? '<span class="verified">✓</span>' : ''}
+                </div>
+                <div class="message-content">${content}</div>
+            `;
+
+            chatContainer.appendChild(messageDiv);
+
+            // Son 10 mesajı tut (OBS için)
+            while (chatContainer.children.length > 10) {
+                chatContainer.removeChild(chatContainer.firstChild);
+            }
+
+            // 30 saniye sonra mesajı kaldır
+            setTimeout(() => {
+                if (messageDiv.parentNode) {
+                    messageDiv.style.opacity = '0';
+                    setTimeout(() => {
+                        if (messageDiv.parentNode) {
+                            messageDiv.parentNode.removeChild(messageDiv);
+                        }
+                    }, 300);
+                }
+            }, 30000);
+        }
+    </script>
+</body>
+</html>

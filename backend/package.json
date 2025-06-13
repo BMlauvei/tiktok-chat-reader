@@ -1,0 +1,19 @@
+{
+  "name": "tiktok-chat-reader-backend",
+  "version": "1.0.0",
+  "description": "TikTok Chat Reader Backend Server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.4",
+    "tiktok-live-connector": "^1.1.8",
+    "cors": "^2.8.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
